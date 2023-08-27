@@ -166,10 +166,54 @@ JOIN pizza_runner.runner_orders R
 ON C.order_id = R.order_id
 WHERE R.pickup_time <> 'null'
 GROUP BY C.order_id
-ORDER BY pizza_delivered desc
+ORDER BY pizza_delivered desc;
 
 -- Question 7: For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+SELECT 
+    C.customer_id,
+    SUM(CASE
+        WHEN (
+            (exclusions IS NOT NULL AND exclusions <> 'null' AND LENGTH(exclusions) > 0)
+            OR (extras IS NOT NULL AND extras <> 'null' AND LENGTH(extras) > 0)
+        ) THEN 1
+        ELSE 0
+    END) AS pizzas_with_changes,
+    SUM(CASE
+        WHEN (
+            (exclusions IS NULL OR exclusions = 'null' OR LENGTH(exclusions) = 0)
+            AND (extras IS NULL OR extras = 'null' OR LENGTH(extras) = 0)
+        ) THEN 1
+        ELSE 0
+    END) AS pizzas_without_changes
+FROM 
+    pizza_runner.customer_orders C
+JOIN 
+    pizza_runner.runner_orders R ON C.order_id = R.order_id
+WHERE 
+    R.pickup_time IS NOT NULL
+GROUP BY 
+    C.customer_id;
+
 -- Question 8: How many pizzas were delivered that had both exclusions and extras?
+SELECT COUNT(*) 'Pizzas with extras and exclusions'
+FROM pizza_runner.customer_orders C
+JOIN pizza_runner.runner_orders R
+ON C.order_id = R.order_id
+WHERE R.pickup_time <> 'null'
+AND (exclusions IS NOT NULL AND exclusions <> 'null'AND LENGTH(exclusions) > 0)
+AND (extras IS NOT NULL AND extras <> 'null' AND LENGTH(extras) > 0);
+
 -- Question 9: What was the total volume of pizzas ordered for each hour of the day?
+SELECT  EXTRACT(HOUR FROM order_time) AS Hour_ordered, COUNT(pizza_id) 'Volume of Pizza Ordered' -- extract works on mysql
+FROM pizza_runner.customer_orders
+GROUP BY Hour_ordered
+ORDER BY Hour_ordered DESC;
+
+
 -- Question 10: What was the volume of orders for each day of the week?
-  
+SELECT*
+FROM pizza_runner.customer_orders; 
+
+SELECT DAYNAME(order_time) AS day_of_week, COUNT(pizza_id) 'Volume of Pizza Ordered' -- extract works on mysql
+FROM pizza_runner.customer_orders
+GROUP BY day_of_week;

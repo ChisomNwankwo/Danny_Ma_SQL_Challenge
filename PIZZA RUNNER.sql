@@ -2,12 +2,12 @@ CREATE SCHEMA pizza_runner;
 -- SET search_path = pizza_runner;
 
 DROP TABLE IF EXISTS pizza_runner.runners;
-CREATE TABLE pizza_runner.runners (
+CREATE TABLE runners (
   runner_id INTEGER,
   registration_date DATE
 );
 
-INSERT INTO pizza_runner.runners
+INSERT INTO runners
   (runner_id, registration_date)
 VALUES
   (1, '2021-01-01'),
@@ -17,7 +17,7 @@ VALUES
 
 
 DROP TABLE IF EXISTS pizza_runner.customer_orders;
-CREATE TABLE pizza_runner.customer_orders (
+CREATE TABLE customer_orders (
   order_id INTEGER,
   customer_id INTEGER,
   pizza_id INTEGER,
@@ -26,7 +26,7 @@ CREATE TABLE pizza_runner.customer_orders (
   order_time TIMESTAMP
 );
 
-INSERT INTO pizza_runner.customer_orders
+INSERT INTO customer_orders
   (order_id, customer_id, pizza_id, exclusions, extras, order_time)
 VALUES
   ('1', '101', '1', '', '', '2020-01-01 18:05:02'),
@@ -46,7 +46,7 @@ VALUES
 
 
 DROP TABLE IF EXISTS pizza_runner.runner_orders;
-CREATE TABLE pizza_runner.runner_orders (
+CREATE TABLE runner_orders (
   order_id INTEGER,
   runner_id INTEGER,
   pickup_time VARCHAR(19),
@@ -55,7 +55,7 @@ CREATE TABLE pizza_runner.runner_orders (
   cancellation VARCHAR(23)
 );
 
-INSERT INTO pizza_runner.runner_orders
+INSERT INTO runner_orders
   (order_id, runner_id, pickup_time, distance, duration, cancellation)
 VALUES
   ('1', '1', '2020-01-01 18:15:34', '20km', '32 minutes', ''),
@@ -71,12 +71,12 @@ VALUES
 
 
 DROP TABLE IF EXISTS pizza_runner.pizza_names;
-CREATE TABLE pizza_runner.pizza_names (
+CREATE TABLE pizza_names (
   pizza_id INTEGER,
   pizza_name TEXT
 );
 
-INSERT INTO pizza_runner.pizza_names
+INSERT INTO pizza_names
   (pizza_id, pizza_name)
 VALUES
   (1, 'Meatlovers'),
@@ -84,12 +84,12 @@ VALUES
 
 
 DROP TABLE IF EXISTS pizza_runner.pizza_recipes;
-CREATE TABLE pizza_runner.pizza_recipes (
+CREATE TABLE pizza_recipes (
   pizza_id INTEGER,
   toppings TEXT
 );
 
-INSERT INTO pizza_runner.pizza_recipes
+INSERT INTO pizza_recipes
   (pizza_id, toppings)
 VALUES
   (1, '1, 2, 3, 4, 5, 6, 8, 10'),
@@ -97,12 +97,12 @@ VALUES
 
 
 DROP TABLE IF EXISTS pizza_runner.pizza_toppings;
-CREATE TABLE pizza_runner.pizza_toppings (
+CREATE TABLE pizza_toppings (
   topping_id INTEGER,
   topping_name TEXT
 );
 
-INSERT INTO pizza_runner.pizza_toppings
+INSERT INTO pizza_toppings
   (topping_id, topping_name)
 VALUES
   (1, 'Bacon'),
@@ -122,47 +122,50 @@ VALUES
   -- DROP DATABASE pizza_runner;
   
   -- view tables in database
-  SHOW TABLES FROM pizza_runner;
+  SELECT table_name
+  FROM information_schema.tables
+  WHERE table_schema = 'public'; -- Assuming the tables are in the "public" schema
+
  -- PIZZA METRICS 
  
 -- Question 1: How many pizzas were ordered?
-SELECT COUNT(*) 'total orders'
-FROM pizza_runner.customer_orders;
+SELECT COUNT(*) "total orders"
+FROM customer_orders;
 
 -- Question 2: How many unique customer orders were made?
-SELECT  COUNT(DISTINCT(order_id)) 'unique orders'
-FROM pizza_runner.customer_orders;
+SELECT  COUNT(DISTINCT(order_id)) "unique orders"
+FROM customer_orders;
 
 -- Question 3: How many successful orders were delivered by each runner?
-SELECT runner_id, COUNT(*) 'successful orders'
+SELECT runner_id, COUNT(*) "successful orders"
 FROM pizza_runner.runner_orders
 WHERE pickup_time <> 'null'
 GROUP BY runner_id;
 
 -- Question 4: How many of each type of pizza was delivered?
-SELECT P.pizza_name,COUNT(*) 'pizza delivered'
-FROM pizza_runner.pizza_names P
-JOIN pizza_runner.customer_orders C
+SELECT P.pizza_name,COUNT(*) "pizza delivered"
+FROM pizza_names P
+JOIN customer_orders C
 ON P.pizza_id = C.pizza_id
-JOIN pizza_runner.runner_orders R
+JOIN runner_orders R
 ON R.order_id = C.order_id
 WHERE pickup_time <> 'null'
 GROUP BY P.pizza_name;
 
 -- Question 5: How many Vegetarian and Meatlovers were ordered by each customer?
 SELECT C.customer_id, P.pizza_name ,COUNT(*) pizza_ordered
-FROM pizza_runner.pizza_names P
-JOIN pizza_runner.customer_orders C
+FROM pizza_names P
+JOIN customer_orders C
 ON P.pizza_id = C.pizza_id
-JOIN pizza_runner.runner_orders R
+JOIN runner_orders R
 ON R.order_id = C.order_id
 GROUP BY C.customer_id,P.pizza_name
 ORDER BY pizza_ordered DESC;
 
 -- Question 6: What was the maximum number of pizzas delivered in a single order?
 SELECT C.order_id, COUNT(C.pizza_id) pizza_delivered
-FROM pizza_runner.customer_orders C
-JOIN pizza_runner.runner_orders R
+FROM customer_orders C
+JOIN runner_orders R
 ON C.order_id = R.order_id
 WHERE R.pickup_time <> 'null'
 GROUP BY C.order_id
@@ -186,44 +189,43 @@ SELECT
         ELSE 0
     END) AS pizzas_without_changes
 FROM 
-    pizza_runner.customer_orders C
+    customer_orders C
 JOIN 
-    pizza_runner.runner_orders R ON C.order_id = R.order_id
+    runner_orders R ON C.order_id = R.order_id
 WHERE 
     R.pickup_time IS NOT NULL
 GROUP BY 
     C.customer_id;
 
 -- Question 8: How many pizzas were delivered that had both exclusions and extras?
-SELECT COUNT(*) 'Pizzas with extras and exclusions'
-FROM pizza_runner.customer_orders C
-JOIN pizza_runner.runner_orders R
+SELECT COUNT(*) "Pizzas with extras and exclusions"
+FROM customer_orders C
+JOIN runner_orders R
 ON C.order_id = R.order_id
 WHERE R.pickup_time <> 'null'
 AND (exclusions IS NOT NULL AND exclusions <> 'null'AND LENGTH(exclusions) > 0)
 AND (extras IS NOT NULL AND extras <> 'null' AND LENGTH(extras) > 0);
 
 -- Question 9: What was the total volume of pizzas ordered for each hour of the day?
-SELECT  EXTRACT(HOUR FROM order_time) AS Hour_ordered, COUNT(pizza_id) 'Volume of Pizza Ordered' -- extract works on mysql
-FROM pizza_runner.customer_orders
+SELECT  EXTRACT(HOUR FROM order_time) AS Hour_ordered, COUNT(pizza_id) "Volume of Pizza Ordered" -- extract works on mysql
+FROM customer_orders
 GROUP BY Hour_ordered
 ORDER BY Hour_ordered DESC;
 
 
 -- Question 10: What was the volume of orders for each day of the week?
 SELECT*
-FROM pizza_runner.customer_orders; 
+FROM customer_orders; 
 
-SELECT DAYNAME(order_time) AS day_of_week, COUNT(pizza_id) 'Volume of Pizza Ordered' -- extract works on mysql
-FROM pizza_runner.customer_orders
-GROUP BY day_of_week;
+SELECT EXTRACT(DOW FROM order_time) AS day_of_week, COUNT(pizza_id) AS total_pizzas
+FROM customer_orders
+GROUP BY day_of_week
+ORDER BY day_of_week;
 
-## B. Runner and Customer Experience
+
+-- B. Runner and Customer Experience
 -- Question 1: How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+SELECT*
+FROM runners;
 
--- Question 2: What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
--- Question 3: Is there any relationship between the number of pizzas and how long the order takes to prepare?
--- Question 4: What was the average distance travelled for each customer?
--- Question 5: What was the difference between the longest and shortest delivery times for all orders?
--- Question 6: What was the average speed for each runner for each delivery and do you notice any trend for these values?
--- Question 7: What is the successful delivery percentage for each runner?
+

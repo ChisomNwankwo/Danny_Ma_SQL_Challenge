@@ -2850,7 +2850,7 @@ AND previous_plan_id = 1; -- Pro Monthly
 -- C. Challenge Payment Question
 
 -- Create the new payments table for the year 2020
-CREATE TABLE payments_2020 AS
+CREATE TABLE payments AS
 WITH MonthlyPayments AS (
     SELECT
         s.customer_id,
@@ -2906,4 +2906,7 @@ ORDER BY
     f.payment_date;
 
 -- Add primary key to the new payments table
--- ALTER TABLE payments_2020 ADD PRIMARY KEY (customer_id, plan_id, payment_order);
+ALTER TABLE payments ADD PRIMARY KEY (customer_id, plan_id, payment_order);
+
+SELECT *
+FROM payments

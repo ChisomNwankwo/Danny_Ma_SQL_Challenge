@@ -227,7 +227,7 @@ VALUES
   ('73', '2', '2020-05-13'),
   ('73', '3', '2020-10-13'),
   ('74', '0', '2020-05-24'),
-  ('74', '1', '2020-05-31'),
+  ('74', '1', '2020-05-31'), 
   ('74', '3', '2020-10-01'),
   ('75', '0', '2020-07-14'),
   ('75', '1', '2020-07-21'),
@@ -2681,7 +2681,7 @@ VALUES
   ('1000', '4', '2020-06-04');
   
   
- -- A. Customer Journey
+-- A. Customer Journey
 -- Based off the 8 sample customers provided in the sample from the subscriptions table, write a brief description about each customer’s onboarding journey.
 SELECT customer_id, s.plan_id,plan_name,start_date
 FROM subscriptions s
@@ -2756,11 +2756,11 @@ WHERE plan_id <> 0;
 
 -- What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
 SELECT plan_name, COUNT(*) AS count,  
-ROUND((COUNT (*) * 100.0) / (SELECT COUNT(*) FROM subscriptions WHERE start_date = '2020-12-31'),1) AS percent_breakdown
+ROUND((COUNT (*) * 100.0) / (SELECT COUNT(*) FROM subscriptions WHERE start_date <= '2020-12-31'),1) AS percent_breakdown
 FROM subscriptions s
 JOIN plans p
 ON s.plan_id = p.plan_id
-WHERE start_date = '2020-12-31'
+WHERE start_date <= '2020-12-31'
 GROUP BY 1
 
 -- How many customers have upgraded to an annual plan in 2020?
@@ -2772,7 +2772,78 @@ WHERE plan_name = 'pro annual'
 AND EXTRACT(YEAR FROM start_date) = 2020
 
 
+-- How many days on average does it take for a customer to be on an annual plan from the day they join Foodie-Fi?
+WITH TRIAL AS (
+	SELECT customer_id, start_date AS trial_start
+    FROM subscriptions 
+    WHERE plan_id = 0
+),
+ANNUAL AS (
+	SELECT customer_id, start_date AS annual_start
+    FROM subscriptions
+    WHERE plan_id = 3
+)
+SELECT --t.customer_id, trial_start, annual_start,
+AVG(EXTRACT(DAY FROM (annual_start::timestamp - trial_start::timestamp))) AS avg_date_diff
+FROM TRIAL t
+JOIN ANNUAL a
+ON t.customer_id = a.customer_id;
+
+--- you can also solve this like this;
+WITH ANNUAL_SWITCH AS (
+    SELECT 
+        customer_id, 
+        MIN(start_date) AS trial_start, 
+        MAX(start_date) AS annual_start
+    FROM subscriptions 
+    WHERE plan_id IN (0, 3)
+    GROUP BY customer_id
+    HAVING COUNT(DISTINCT plan_id) = 2
+)
+SELECT 
+    -- customer_id, 
+    -- trial_start, 
+    -- annual_start,
+    AVG(EXTRACT(DAY FROM (annual_start::timestamp - trial_start::timestamp))) AS avg_days_to_annual
+FROM ANNUAL_SWITCH;
+
+-- Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+WITH TRIAL AS (
+	SELECT customer_id, start_date AS trial_start
+    FROM subscriptions 
+    WHERE plan_id = 0
+),
+ANNUAL AS (
+	SELECT customer_id, start_date AS annual_start
+    FROM subscriptions
+    WHERE plan_id = 3
+)
+SELECT t.customer_id,
+EXTRACT(DAY FROM (annual_start::timestamp - trial_start::timestamp)) AS date_diff,
+CASE 
+WHEN EXTRACT(DAY FROM (annual_start::timestamp - trial_start::timestamp)) <= 30 THEN '0-30 days'
+WHEN EXTRACT(DAY FROM (annual_start::timestamp - trial_start::timestamp)) <=60 THEN '0-60 days'
+ELSE 'over 60 days'
+END AS period
+
+FROM TRIAL t
+JOIN ANNUAL a
+ON t.customer_id = a.customer_id
 
 
 
+-- How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+WITH Subscriptions2020 AS (
+    SELECT
+        customer_id,
+        plan_id,
+        LAG(plan_id) OVER (PARTITION BY customer_id ORDER BY start_date) AS previous_plan_id
+    FROM subscriptions
+    WHERE EXTRACT(YEAR FROM start_date) = 2020
+)
+
+SELECT COUNT(DISTINCT customer_id)
+FROM Subscriptions2020
+WHERE plan_id = 2 -- Basic Monthly
+AND previous_plan_id = 1; -- Pro Monthly
 

@@ -2847,3 +2847,63 @@ FROM Subscriptions2020
 WHERE plan_id = 2 -- Basic Monthly
 AND previous_plan_id = 1; -- Pro Monthly
 
+-- C. Challenge Payment Question
+
+-- Create the new payments table for the year 2020
+CREATE TABLE payments_2020 AS
+WITH MonthlyPayments AS (
+    SELECT
+        s.customer_id,
+        s.plan_id,
+        s.start_date AS payment_date,
+        p.price AS amount,
+        1 AS payment_order
+    FROM subscriptions s
+    JOIN plans p ON s.plan_id = p.plan_id
+    WHERE EXTRACT(YEAR FROM s.start_date) = 2020
+    AND s.plan_id IN (1, 2) -- Monthly plans
+),
+UpgradePayments AS (
+    SELECT
+        s.customer_id,
+        s.plan_id,
+        s.start_date AS payment_date,
+        CASE
+            WHEN s.plan_id = 2 THEN p.price - m.amount -- Pro Monthly Upgrade
+            WHEN s.plan_id = 3 THEN p.price - m.amount -- Pro Annual Upgrade
+        END AS amount,
+        1 AS payment_order
+    FROM subscriptions s
+    JOIN plans p ON s.plan_id = p.plan_id
+    JOIN MonthlyPayments m ON s.customer_id = m.customer_id
+    WHERE EXTRACT(YEAR FROM s.start_date) = 2020
+    AND s.plan_id IN (2, 3) -- Upgraded plans
+),
+ChurnedCustomers AS (
+    SELECT DISTINCT customer_id
+    FROM subscriptions
+    WHERE EXTRACT(YEAR FROM start_date) = 2020
+    AND plan_id = 4 -- Churned customers
+),
+FinalPayments AS (
+    SELECT * FROM MonthlyPayments
+    UNION ALL
+    SELECT * FROM UpgradePayments
+)
+SELECT
+    f.customer_id,
+    f.plan_id,
+    p.plan_name,
+    f.payment_date,
+    f.amount,
+    ROW_NUMBER() OVER (PARTITION BY f.customer_id, f.plan_id ORDER BY f.payment_date) AS payment_order
+FROM FinalPayments f
+JOIN plans p ON f.plan_id = p.plan_id
+WHERE f.customer_id NOT IN (SELECT customer_id FROM ChurnedCustomers)
+ORDER BY
+    f.customer_id,
+    f.plan_id,
+    f.payment_date;
+
+-- Add primary key to the new payments table
+-- ALTER TABLE payments_2020 ADD PRIMARY KEY (customer_id, plan_id, payment_order);

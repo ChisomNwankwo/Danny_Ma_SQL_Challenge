@@ -2719,22 +2719,57 @@ WHERE
     plan_id = 4;
 
 -- How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+WITH CTE AS (
+    SELECT
+        customer_id,plan_id,
+        ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY start_date) AS row_num
+    FROM
+        subscriptions
+    WHERE
+        plan_id IN (0, 4) -- 0 for free trial, 4 for churned
+)
+
 SELECT
-    COUNT(*) AS churned_customers,
-    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM subscriptions WHERE plan_id = 0)), 0) AS percentage_churned
+    COUNT(DISTINCT(customer_id)) AS churned_after_trials,
+    ROUND((COUNT(DISTINCT(customer_id)) * 100.0 / (SELECT COUNT(DISTINCT(customer_id)) FROM CTE WHERE row_num = 1)), 0) AS percentage_churned_after_trials
 FROM
-    subscriptions
+    CTE
 WHERE
-    plan_id = 4;
-	
+    row_num = 2; -- Churned immediately after free trial, so their row_num is 2
+		
+
+-- it looks like using CTE and simplepercentage calcuation will give me the same answer
+
+SELECT 
+       COUNT (*) AS churned_after_trials,
+	  ROUND((COUNT(*) * 100.0) / (SELECT COUNT(*) FROM subscriptions WHERE plan_id = 0), 0) AS percent_churned_after_trials
+FROM subscriptions
+WHERE plan_id = 4;
+
 -- What is the number and percentage of customer plans after their initial free trial?
 
+SELECT 
+     COUNT(*) AS customers_after_trials,
+	 ROUND((COUNT(*) * 100.0) / (SELECT COUNT(*) FROM subscriptions), 0) AS percent_customers_after_trials
+FROM subscriptions 
+WHERE plan_id <> 0;
 
+-- What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+SELECT plan_name, COUNT(*) AS count,  
+ROUND((COUNT (*) * 100.0) / (SELECT COUNT(*) FROM subscriptions WHERE start_date = '2020-12-31'),1) AS percent_breakdown
+FROM subscriptions s
+JOIN plans p
+ON s.plan_id = p.plan_id
+WHERE start_date = '2020-12-31'
+GROUP BY 1
 
-
-
-
-
+-- How many customers have upgraded to an annual plan in 2020?
+SELECT COUNT(DISTINCT customer_id) AS customers_that_upgraded
+FROM subscriptions s
+JOIN plans p
+ON s.plan_id = p.plan_id
+WHERE plan_name = 'pro annual'
+AND EXTRACT(YEAR FROM start_date) = 2020
 
 
 

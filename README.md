@@ -1,5 +1,5 @@
 # Danny_Ma_SQL_Challenge
-For the next week, I will be carrying out the Danny Ma's SQL challenge and documenting my progress here. There are 8 case studies in the Challenge that i will be working on;
+For the couple of weeks, I will be carrying out the Danny Ma's SQL challenge and documenting my progress here. There are 8 case studies in the Challenge that i will be working on;
 
 Case Study #1 - Danny's Diner
 

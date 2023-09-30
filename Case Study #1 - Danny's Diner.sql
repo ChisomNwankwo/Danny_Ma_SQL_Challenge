@@ -1,8 +1,6 @@
-USE dannys_diner;
-SELECT * FROM sales;
-SHOW TABLES;
-DROP DATABASE dannys_diner;
-CREATE SCHEMA dannys_diner;
+--DROP SCHEMA dannys_diner CASCADE;
+CREATE SCHEMA dannys_diner; 
+SET search_path = dannys_diner;
 
 CREATE TABLE dannys_diner.sales (
   customer_id VARCHAR(1),
@@ -54,56 +52,49 @@ VALUES
   ('A', '2021-01-07'),
   ('B', '2021-01-09');
   
-  select*
-  from dannys_diner.menu;
   
-  -- disable full_group by
-    SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
-  
-  -- Question 1: What is the total amount each customer spent at the restaurant?  
+ -- Question 1: What is the total amount each customer spent at the restaurant?  
   SELECT product_id AS customer, price 
-  FROM dannys_diner.menu;
+  FROM menu;
   
   -- Question 2: How many days has each customer visited the restaurant?
   SELECT customer_id, COUNT(DISTINCT order_date) Days_Visited
-  FROM dannys_diner.sales
-  GROUP BY customer_id;
+  FROM sales
+  GROUP BY 1;
   
 
 
   -- Question 3:What was the first item from the menu purchased by each customer?
-  SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
-  SELECT s.customer_id AS customer,  MIN(s.order_date) AS first_purchase_date, m.product_name AS first_item_purchased
-  FROM dannys_diner.sales s
-  JOIN dannys_diner.menu m 
-  ON s.product_id = m.product_id
-  GROUP BY s.customer_id;
+  SELECT customer_id, MIN(m.product_name) AS first_item_purchased
+  FROM sales s
+  JOIN menu m
+  ON m.product_id = s.product_Id
+  GROUP BY 1
+  ORDER BY 1
+ 
+
+ 
   
   -- Question 4: What is the most purchased item on the menu and how many times was it purchased by all customers?
-  SELECT COUNT(m.product_id) no_of_time_purchased, m.product_name menu-- COUNT(product_id) no_of_times_purchased
-  FROM dannys_diner.sales s
-  JOIN dannys_diner.menu m
+  SELECT product_name AS product, COUNT(*) AS no_of_times_purchased
+  FROM sales s
+  JOIN menu m
   ON s.product_id = m.product_id
-  GROUP BY m.product_id
-  ORDER BY no_of_time_purchased DESC;
+  GROUP BY 1
+  ORDER BY 2 DESC;
   
-  -- Question 5: Which item was the most popular for each customer?
-SELECT s.customer_id AS customer,
-       m.product_name AS most_popular_item,
-       COUNT(m.product_name) AS no_of_times_purchased
-FROM dannys_diner.sales s
-JOIN dannys_diner.menu m ON s.product_id = m.product_id
-GROUP BY s.customer_id, m.product_name
-HAVING COUNT(m.product_name) = (
-  SELECT MAX(purchase_count)
-  FROM (
-    SELECT customer_id, product_name, COUNT(*) AS purchase_count
-    FROM dannys_diner.sales s
-    JOIN dannys_diner.menu m ON s.product_id = m.product_id
-    GROUP BY customer_id, product_name
-  ) AS customer_item_counts
-  WHERE customer_item_counts.customer_id = s.customer_id
-);
+-- Question 5: Which item was the most popular for each customer?
+WITH ItemRank AS (
+	SELECT customer_id, product_name,
+	RANK() OVER (PARTITION BY s.customer_id ORDER BY COUNT(*) DESC) AS item_rank
+	FROM sales s
+	JOIN menu m ON s.product_id = m.product_id
+	GROUP BY 1,2	
+)
+SELECT customer_id, product_name
+FROM ItemRank
+WHERE item_rank = 1
+
 
 -- Question 6: Which item was purchased first by the customer after they became a member?
 SELECT *

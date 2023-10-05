@@ -17211,7 +17211,7 @@ UPDATE weekly_sales
 SET avg_transaction = sales/transactions;
 
 SELECT*
-FROM weekly_sales
+FROM weekly_sales;
 
 -- Now let's rearrange our columns
 --DROP TABLE new_weekly_sales;
@@ -17240,7 +17240,7 @@ SELECT date,week,month,year,region,platform,
 FROM weekly_sales;
 
 -- let's delete the old table
-DROP TABLE weekly_sales
+DROP TABLE weekly_sales;
 
 --rename old table to weekly_sales
 ALTER TABLE new_weekly_sales
@@ -17314,25 +17314,387 @@ FROM weekly_sales
 GROUP BY 1,2
 ORDER BY 1;
 
+--3 Before & After Analysis
+--What is the total sales for the 4 weeks before and after 2020-06-15? What is the growth or reduction rate in actual values and percentage of sales?
+WITH BeforeDate AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE date >= '2020-05-18'  AND DATE < '2020-06-15' -- 4 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1 
+),
+AfterDate AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15' AND DATE <= '2020-07-13' -- 4 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate B
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate A 
+ORDER BY 1
+)
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+(sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week) AS sales_growth_percentage
+FROM AllSales;
+
+-- What about the entire 12 weeks before and after?
+
+WITH BeforeDate AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterDate AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate B
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate A 
+ORDER BY 1
+)
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+(sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week) AS sales_growth_percentage
+FROM AllSales;
+ 
+-- How do the sale metrics for these 2 periods before and after compare with the previous years in 2018 and 2019?
+-- for this, i will repeat the same procress for 2018 and 2019
+-- starting with 2019 (4 weeks)
+
+WITH BeforeDate AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2019-06-17' AND DATE >= '2019-05-20' -- 4 weeks before '2019-06-17'
+GROUP BY 1
+ORDER BY 1 
+),
+AfterDate AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2019-06-17' AND  DATE <= '2019-07-15' -- 4 weeks after '2019-06-17'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate B
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate A 
+ORDER BY 1
+)
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+(sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week) AS sales_growth_percentage
+FROM AllSales;
+ 
+--- lets calculate for 2018 (4 weeks)
+
+WITH BeforeDate AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2018-06-18' AND DATE >= '2018-05-21' -- 4 weeks before '2018-06-18'
+GROUP BY 1
+ORDER BY 1  
+),
+AfterDate AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2018-06-18' AND  DATE <= '2018-07-16' -- 4 weeks after '2018-06-18'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate B
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate A 
+ORDER BY 1
+)
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+(sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week) AS sales_growth_percentage
+FROM AllSales;
 
 
+-- I want to be able to see all my results in one table. I can either convert the CTEs to one table, or just do this as one very complex query (lol)
+--we are targeting 4 week before and after
 
+WITH BeforeDate2018 AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2018-06-18' AND DATE >= '2018-05-21' -- 4 weeks before '2018-06-18'
+GROUP BY 1
+ORDER BY 1  
+),
+AfterDate2018 AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2018-06-18' AND  DATE <= '2018-07-16' -- 4 weeks after '2018-06-18'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales2018 AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate2018
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate2018 
+ORDER BY 1
+),
+SalesGrowth2018 AS (
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+ROUND((sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week),1) AS sales_growth_percentage
+FROM AllSales2018
+),
+BeforeDate2019 AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2019-06-17' AND DATE >= '2019-05-20' -- 4 weeks before '2019-06-17'
+GROUP BY 1
+ORDER BY 1 
+),
+AfterDate2019 AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2019-06-17' AND  DATE <= '2019-07-15' -- 4 weeks after '2019-06-17'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales2019 AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate2019
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate2019 
+ORDER BY 1
+),
+SalesGrowth2019 AS (
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+ROUND((sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week),1) AS sales_growth_percentage
+FROM AllSales2019
+),
+BeforeDate2020 AS (
+SELECT week, SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE date >= '2020-05-18'  AND DATE < '2020-06-15' -- 4 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1 
+),
+AfterDate2020 AS(
+SELECT week, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15' AND DATE <= '2020-07-13' -- 4 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AllSales2020 AS (
+SELECT week, before_sales AS sales
+FROM BeforeDate2020
+UNION 
+SELECT week, after_sales AS sales
+FROM AfterDate2020
+ORDER BY 1
+),
+SalesGrowth2020 AS (
+SELECT week,sales,
+sales - LAG (sales) OVER (ORDER BY week) AS sales_growth,
+ROUND((sales - LAG(sales) OVER (ORDER BY week)) * 100.0 / LAG(sales) OVER (ORDER BY week),1) AS sales_growth_percentage
+FROM AllSales2020
+)
+SELECT S8.week, 
+S8.sales_growth AS sales_growth_2018,
+S9.sales_growth AS sales_growth_2019,
+S0.sales_growth AS sales_growth_2020,
+S8.sales_growth_percentage AS percent_growth_2018,
+S9.sales_growth_percentage AS percent_growth_2019,
+S0.sales_growth_percentage AS percent_growth_2020
+FROM SalesGrowth2018 S8
+JOIN SalesGrowth2019 S9 ON S8.week = S9.week
+JOIN SalesGrowth2020 S0 ON S9.week = S0.week;
 
+--4. Bonus Question
+--Which areas of the business have the highest negative impact in sales metrics performance in 2020 for the 12 week before and after period?
+--using region
+WITH BeforeRegion AS (
+SELECT region,
+SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterRegion AS(
+SELECT region, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+Region AS (
+SELECT B.region, 
+(after_sales - before_sales) AS sales_impact
+FROM BeforeRegion B
+JOIN AfterRegion A ON B.region = A.region
+ORDER BY 2
+),
 
+-- platform
+BeforePlatform AS (
+SELECT platform,
+SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterPlatform AS(
+SELECT platform, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+Platform AS (
+SELECT B.platform, 
+(after_sales - before_sales) AS sales_impact
+FROM BeforePlatform B
+JOIN AfterPlatform A ON B.platform = A.platform
+ORDER BY 2
+),
 
+--age_band
+BeforeAgeBand AS (
+SELECT age_band,
+SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterAgeBand AS(
+SELECT age_band, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AgeBand AS (
+SELECT B.age_band, 
+(after_sales - before_sales) AS sales_impact
+FROM BeforeAgeBand B
+JOIN AfterAgeBand A ON B.age_band = A.age_band
+ORDER BY 2
+),
 
+-- demographic
+BeforeDemographic AS (
+SELECT demographic,
+SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterDemographic AS(
+SELECT demographic, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+Demographic AS (
+SELECT B.demographic, 
+(after_sales - before_sales) AS sales_impact
+FROM BeforeDemographic B
+JOIN AfterDemographic A ON B.demographic = A.demographic
+ORDER BY 2
+),
 
+-- customer_type
+BeforeCustomerType AS (
+SELECT customer_type,
+SUM(sales) AS before_sales
+FROM weekly_sales
+WHERE DATE < '2020-06-15' AND DATE >= '2020-03-23'-- 12 weeks before '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+AfterCustomerType AS(
+SELECT customer_type, SUM(sales) AS after_sales
+FROM weekly_sales
+WHERE date > '2020-06-15'  -- 12 weeks after '2020-06-15'
+GROUP BY 1
+ORDER BY 1
+),
+CustomerType AS (
+SELECT B.customer_type, 
+(after_sales - before_sales) AS sales_impact
+FROM BeforeCustomerType B
+JOIN AfterCustomerType A ON B.customer_type = A.customer_type
+ORDER BY 2
+),
+-- Combine results from different dimensions using UNION ALL
+CombinedResults AS (
+    SELECT
+        'Region' AS area,
+        R.region AS value,
+        R.sales_impact
+    FROM Region R
 
+    UNION ALL
 
+    SELECT
+        'Platform' AS area,
+        P.platform AS value,
+        P.sales_impact
+    FROM Platform P
+	
+	UNION ALL
+	
+	SELECT
+	'Age band' AS area,
+	A.age_band AS value,
+	A.sales_impact
+	FROM AgeBand A
+	
+	UNION ALL
+	
+	SELECT
+	'Demographic' AS area,
+	D.demographic AS value,
+	D.sales_impact
+	FROM Demographic D
 
-
-
-
-
-
-
-
-
+    UNION ALL
+	
+	SELECT
+	'Customer type' AS area,
+	C.customer_type AS value,
+	C.sales_impact
+	FROM CustomerType C
+)
+SELECT *
+FROM CombinedResults
+ORDER BY 1;
 
 
 

@@ -17246,3 +17246,96 @@ DROP TABLE weekly_sales
 ALTER TABLE new_weekly_sales
 RENAME TO weekly_sales;
 
+--2. Data Exploration
+--What day of the week is used for each week_date value?
+SELECT DISTINCT EXTRACT(DOW FROM date) AS day_of_week
+FROM weekly_sales; --the day of the week used is monday
+
+-- What range of week numbers are missing from the dataset?
+SELECT DISTINCT week
+FROM weekly_sales
+ORDER BY 1; --week 1-12, 37-52
+
+--How many total transactions were there for each year in the dataset?
+SELECT year, SUM(transactions) AS total_transactions
+FROM weekly_sales
+GROUP BY 1
+ORDER BY 1;
+
+--What is the total sales for each region for each month?
+SELECT region, SUM(sales) AS total_sales
+FROM weekly_sales
+GROUP BY 1
+ORDER BY 1;
+
+-- What is the total count of transactions for each platform
+SELECT platform, COUNT(transactions) AS number_of_transactions
+FROM weekly_sales
+GROUP BY 1
+ORDER BY 1;
+
+-- What is the percentage of sales for Retail vs Shopify for each month?
+
+SELECT month, platform,
+       ROUND((SUM(sales) * 100.0) / (SELECT SUM(sales) 
+           FROM weekly_sales ws2 
+           WHERE ws2.month = ws1.month
+       ),1) AS percent_sales
+FROM weekly_sales ws1
+GROUP BY 1,2
+ORDER BY 1,2;
+
+--i can also use partition()
+SELECT month,
+       platform,
+       (SUM(sales) * 100.0) / SUM(SUM(sales)) OVER (PARTITION BY month) AS percent_sales
+FROM weekly_sales
+GROUP BY 1,2
+ORDER BY 1,2;
+
+-- What is the percentage of sales by demographic for each year in the dataset?
+SELECT year,
+       demographic,
+       ROUND((SUM(sales) * 100.0) / SUM(SUM(sales)) OVER (PARTITION BY year),1) AS percent_sales
+FROM weekly_sales
+GROUP BY 1,2
+ORDER BY 1,2;
+
+--Which age_band and demographic values contribute the most to Retail sales?
+SELECT age_band,demographic, SUM(sales) AS total_retail_sales
+FROM weekly_sales
+WHERE platform = 'Retail'
+GROUP BY 1,2
+ORDER BY 3 DESC;
+
+-- Can we use the avg_transaction column to find the average transaction size for each year for Retail vs Shopify? If not - how would you calculate it instead?
+SELECT  year, platform, ROUND(AVG(transactions),1) AS avg_transaction
+FROM weekly_sales
+GROUP BY 1,2
+ORDER BY 1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
